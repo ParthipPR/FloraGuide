@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/Green_03"
+    tools:context=".MainActivity">
+
+
+    <!-- FAB for menu -->
+    <include
+        android:id="@+id/toolbar"
+        layout="@layout/toolbar"
+        tools:layout_editor_absoluteX="-1dp">
+
+    </include>
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/menu"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="Menu"
+        android:gravity="end"
+        android:backgroundTint="@color/darkGreen"
+        app:icon="@drawable/menu_ic"/>
+
+    <!-- FAB for Add_plant -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/add_plant"
+        app:layout_constraintBottom_toTopOf="@id/menu"
+        app:layout_constraintEnd_toEndOf="@id/menu"
+        android:layout_marginBottom="24dp"
+        app:srcCompat="@drawable/add_ic"
+        android:backgroundTint="@color/darkGreen"
+        android:contentDescription="@string/app_name"
+        app:fabSize = "normal"/>
+    <!-- Text for FAB for Add_plant -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/add_plant_text"
+        android:text="Add Plant"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="@id/add_plant"
+        app:layout_constraintEnd_toStartOf="@id/add_plant"
+        app:layout_constraintTop_toTopOf="@id/add_plant"
+        android:textColor="@color/black"
+        />
+
+    <!-- FAB for Remove_plant -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/remove_plant"
+        app:layout_constraintBottom_toTopOf="@id/add_plant"
+        app:layout_constraintEnd_toEndOf="@id/add_plant"
+        android:layout_marginBottom="24dp"
+        app:srcCompat="@drawable/remove_ic"
+        android:backgroundTint="@color/darkGreen"
+        android:contentDescription="@string/app_name"
+        app:fabSize = "normal"/>
+    <!-- Text for FAB for Remove_plant -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/remove_plant_text"
+        android:text="Remove Plant"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="@id/remove_plant"
+        app:layout_constraintEnd_toStartOf="@id/remove_plant"
+        app:layout_constraintTop_toTopOf="@id/remove_plant"
+        android:textColor="@color/black"
+        />
+
+    <ListView
+        android:id="@+id/listview"
+        android:layout_width="350dp"
+        android:layout_height="wrap_content"
+        android:divider="@color/Green_03"
+        android:layout_marginTop="16dp"
+        android:dividerHeight="16dp"
+        android:visibility="visible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/toolbar" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
