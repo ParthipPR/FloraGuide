@@ -1,29 +1,57 @@
 package com.example.FloraGuide;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
 
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.Manifest;
 
 
-import com.example.plant_monitor.R;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,6 +66,11 @@ public class MainActivity extends AppCompatActivity {
     // Create an instance of the custom adapter and set it as the adapter for the ListView
     CustomListAdapter adapter;
 
+    private ActivityResultLauncher<Intent> cameraLauncher;
+    private ActivityResultLauncher<Intent> galleryLauncher;
+
+
+    private plantNetApiClient plantNetApiClient; // Instance of the plantNetApiClient
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +106,46 @@ public class MainActivity extends AppCompatActivity {
         menuFab.shrink();
 
 
+
+        // Initialize the camera launcher
+        cameraLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() == RESULT_OK) {
+                            Intent data = result.getData();
+                            if (data != null) {
+                                Bundle extras = data.getExtras();
+                                if (extras != null) {
+                                    Bitmap imageBitmap = (Bitmap) extras.get("data");
+                                    String imageFilePath = saveImageToFile(imageBitmap);
+                                    identifyPlant(imageFilePath);
+                                }
+                            }
+                        }
+                    }
+                });
+
+        // Initialize the gallery launcher
+        galleryLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                new ActivityResultCallback<ActivityResult>() {
+                    @Override
+                    public void onActivityResult(ActivityResult result) {
+                        if (result.getResultCode() == RESULT_OK) {
+                            Intent data = result.getData();
+                            if (data != null) {
+                                Uri imageUri = data.getData();
+                                if (imageUri != null) {
+                                    String imageFilePath = getImageFilePath(imageUri);
+                                    identifyPlant(imageFilePath);
+                                }
+                            }
+                        }
+                    }
+                });
+        // Initialize the plantNetApiClient
+        plantNetApiClient = new plantNetApiClient();
+
         //menu Click listener
         menuFab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,8 +159,7 @@ public class MainActivity extends AppCompatActivity {
                     //extend menuFAB
                     menuFab.extend();
                     isAllFabVisible = true;
-                }
-                else {
+                } else {
                     add_plantFab.hide();
                     remove_plantFab.hide();
                     add_plantText.setVisibility(View.GONE);
@@ -95,8 +167,7 @@ public class MainActivity extends AppCompatActivity {
 
                     menuFab.shrink();
                     isAllFabVisible = false;
-                    }
-
+                }
             }
         });
 
@@ -104,9 +175,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 createAddplantPopupWindow();
-
-
-
             }
         });
 
@@ -115,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Item itemToRemove = null;
                 for (Item item : itemList) {
-                    if (item.getTitle().equals("Carrot") ) {
+                    if (item.getTitle().equals("Carrot")) {
                         itemToRemove = item;
                         break;
                     }
@@ -127,10 +195,55 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-
-
     }
+
+    private static final int REQUEST_CAMERA_PERMISSION = 1001;
+    private static final int REQUEST_READ_STORAGE_PERMISSION = 1002;
+
+// ...
+
+    private boolean checkCameraPermission() {
+        int cameraPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
+        if (cameraPermission != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean checkReadStoragePermission() {
+        int readStoragePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+        if (readStoragePermission != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.MANAGE_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE_PERMISSION);
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, proceed with camera action
+                // For example, you can show the camera intent here
+            } else {
+                // Permission denied, handle accordingly (e.g., show a message or disable camera functionality)
+            }
+        } else if (requestCode == REQUEST_READ_STORAGE_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, proceed with gallery action
+                // For example, you can show the gallery intent here
+            } else {
+                // Permission denied, handle accordingly (e.g., show a message or disable gallery functionality)
+            }
+        }
+    }
+
+
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_IMAGE_GALLERY = 2;
 
     private void createAddplantPopupWindow() {
         LayoutInflater inflater = (LayoutInflater) getSystemService(LAYOUT_INFLATER_SERVICE);
@@ -138,44 +251,45 @@ public class MainActivity extends AppCompatActivity {
 
         // After inflating the popUpView in the createPopupWindow() method
 
-        Spinner spinner = popUpView.findViewById(R.id.spinner);
-        ArrayAdapter<CharSequence> arrayAdapter = ArrayAdapter.createFromResource(this, R.array.plant_types, android.R.layout.simple_spinner_item);
-        arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(arrayAdapter);
-
 
         int width = ViewGroup.LayoutParams.MATCH_PARENT;
         int height = ViewGroup.LayoutParams.WRAP_CONTENT;
         boolean focusable = true;
-        PopupWindow popupWindow = new PopupWindow(popUpView,width,height,focusable);
+        PopupWindow popupWindow = new PopupWindow(popUpView, width, height, focusable);
         ViewGroup layout = findViewById(android.R.id.content);
         layout.post(new Runnable() {
             @Override
             public void run() {
-                popupWindow.showAtLocation(layout, Gravity.BOTTOM,0,0);
-
+                popupWindow.showAtLocation(layout, Gravity.TOP, 0, 0);
             }
         });
-        TextView Skip ,Add ;
-        Skip=popUpView.findViewById(R.id.Skip);
-        Add=popUpView.findViewById(R.id.Add);
-        Skip.setOnClickListener(new View.OnClickListener() {
+        TextView Gallery, Camera;
+        Gallery = popUpView.findViewById(R.id.Gallery);
+        Camera = popUpView.findViewById(R.id.Camera);
+        Gallery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (checkReadStoragePermission()) {
+                    Intent galleryIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                    if (galleryIntent.resolveActivity(getPackageManager()) != null) {
+                        galleryLauncher.launch(galleryIntent);
+                    }
+                }
                 popupWindow.dismiss();
             }
         });
-        Add.setOnClickListener(new View.OnClickListener() {
-
+        Camera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Add plants
-                String selectedPlant = spinner.getSelectedItem().toString();
-                addPlantSpinnerOptionHandler optionHandler = new addPlantSpinnerOptionHandler(MainActivity.this, itemList, adapter);
-                optionHandler.handleOption(selectedPlant);
-                adapter.notifyDataSetChanged();
-                //Toast.makeText(MainActivity.this, "Plant Added", Toast.LENGTH_SHORT).show();
+
+                if (checkCameraPermission()) {
+                    Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    if (cameraIntent.resolveActivity(getPackageManager()) != null) {
+                        cameraLauncher.launch(cameraIntent);
+                    }
+                }
                 popupWindow.dismiss();
+
             }
         });
         // and if you want to close popup when touch Screen
@@ -185,10 +299,136 @@ public class MainActivity extends AppCompatActivity {
                 popupWindow.dismiss();
                 return true;
             }
-
-
         });
-
-
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            if (requestCode == REQUEST_IMAGE_CAPTURE && data != null) {
+                Bundle extras = data.getExtras();
+                if (extras != null) {
+                    Bitmap imageBitmap = (Bitmap) extras.get("data");
+                    // Save the image to a file or process it directly
+                    // For simplicity, we assume the image is saved as "image.jpg"
+                    String imageFilePath = saveImageToFile(imageBitmap);
+                    identifyPlant(imageFilePath);
+                }
+            } else if (requestCode == REQUEST_IMAGE_GALLERY && data != null) {
+                Uri imageUri = data.getData();
+                if (imageUri != null) {
+                    // Get the image file path from the image URI
+                    String imageFilePath = getImageFilePath(imageUri);
+                    identifyPlant(imageFilePath);
+                }
+            }
+        }
+    }
+
+    private String saveImageToFile(Bitmap imageBitmap) {
+        // Save the image bitmap to a file and return the file path
+        File imagesDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (imagesDir != null) {
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String imageFileName = "IMG_" + timeStamp + ".jpg";
+            File imageFile = new File(imagesDir, imageFileName);
+            try (OutputStream outputStream = new FileOutputStream(imageFile)) {
+                imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+                return imageFile.getAbsolutePath();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    private String getImageFilePath(Uri imageUri) {
+        String[] projection = {MediaStore.Images.Media.DATA};
+        Cursor cursor = getContentResolver().query(imageUri, projection, null, null, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            String imagePath = cursor.getString(columnIndex);
+            cursor.close();
+            return imagePath;
+        }
+        return null;
+    }
+
+    private void identifyPlant(String imageFilePath) {
+        if (imageFilePath != null) {
+            // Identify the plant using plantNetApiClient
+            plantNetApiClient.identifyPlant(imageFilePath, new plantNetApiClient.PlantIdentificationListener() {
+                @Override
+                public void onPlantIdentificationSuccess(PlantIdentificationResult result) {
+                    // Process the identification result
+                    // You can access the plant information from the result object
+                    String scientificName = result.getScientificName();
+                    List<String> commonNames = result.getCommonNames();
+                    double confidence = result.getConfidence();
+                    String imageUrl = result.getImageUrl();
+
+
+
+
+                    // Download the image from the URL and display it
+                    downloadAndDisplayImage(imageUrl, scientificName, commonNames.get(0));
+                }
+
+                private void downloadAndDisplayImage(String imageUrl, String scientificName, String commonName) {
+                    OkHttpClient client = new OkHttpClient();
+                    Request request = new Request.Builder()
+                            .url(imageUrl)
+                            .build();
+
+                    client.newCall(request).enqueue(new Callback() {
+                        @Override
+                        public void onFailure(Call call, IOException e) {
+                            // Handle image download failure
+                            e.printStackTrace();
+                        }
+
+                        @Override
+                        public void onResponse(Call call, Response response) throws IOException {
+                            if (response.isSuccessful()) {
+                                // Convert the response body to a byte array
+                                byte[] imageBytes = response.body().bytes();
+
+                                // Decode the byte array to a Bitmap
+                                Bitmap imageBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                                // Convert Bitmap to a base64 encoded string
+                                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                                imageBitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+                                byte[] byteArray = byteArrayOutputStream.toByteArray();
+                                String encodedImage = Base64.encodeToString(byteArray, Base64.DEFAULT);
+
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // Add the identified plant to the list with the downloaded image
+                                        Item newItem = new Item(0,scientificName, commonName, encodedImage);
+                                        itemList.add(newItem);
+                                        adapter.notifyDataSetChanged(); // Notify the adapter that the data set has changed
+                                        Toast.makeText(MainActivity.this, "Plant Added", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            } else {
+                                // Handle image download failure
+                                // You can display a placeholder image or show an error message
+                            }
+                        }
+                    });
+                }
+
+
+                @Override
+                public void onPlantIdentificationFailure(String errorMessage) {
+                    // Handle plant identification failure
+                    Toast.makeText(MainActivity.this, "Plant identification failed: " + errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
 }
+

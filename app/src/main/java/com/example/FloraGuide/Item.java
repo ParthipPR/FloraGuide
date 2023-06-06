@@ -1,22 +1,25 @@
 package com.example.FloraGuide;
 
 public class Item {
-    private int imageResId;
+    private int id;
     private String title;
     private String description;
+    private String imageUrl;
 
-    public Item(int imageResId, String title, String description) {
-        this.imageResId = imageResId;
+    public Item(int id, String title, String description, String imageUrl) {
+        this.id = id;
         this.title = title;
         this.description = description;
+        this.imageUrl = imageUrl;
+
     }
 
     public int getImageResId() {
-        return imageResId;
+        return id;
     }
 
     public void setImageResId(int imageResId) {
-        this.imageResId = imageResId;
+        this.id = id;
     }
 
     public String getTitle() {

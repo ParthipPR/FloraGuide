@@ -7,52 +7,58 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="200dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/popupbg"
         android:orientation="vertical"
-        android:padding="20dp"
-        android:layout_margin="10dp">
+        android:gravity="center"
+        android:padding="20dp">
 
         <TextView
+            android:id="@+id/textView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-condensed-medium"
-            android:text="Choose the type of plant"
-            android:textColor="@color/black"
-            android:layout_marginStart="25dp"
-            android:textSize="25dp" />.
-
-        <Spinner
-            android:id="@+id/spinner"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="10dp"
+            android:text="Choose the photo source"
+            android:textColor="@color/white"
+            android:textSize="25dp"/>
 
         <RelativeLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="20dp">
 
             <TextView
-                android:id="@+id/Skip"
+                android:id="@+id/Gallery"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="@drawable/glass_background"
                 android:padding="5dp"
+                android:text="Gallery"
                 android:textColor="@color/white"
-                android:background="@drawable/popupbg"
-                android:text="Skip" />
+                android:textSize="25dp" />
 
             <TextView
-                android:id="@+id/Add"
+                android:id="@+id/Camera"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="5dp"
-                android:textColor="@color/white"
-                android:background="@drawable/popupbg"
                 android:layout_alignParentEnd="true"
-                android:text="Add" />
+                android:background="@drawable/glass_background"
+                android:padding="5dp"
+                android:text="Camera"
+                android:textColor="@color/white"
+                android:textSize="25dp" />
 
         </RelativeLayout>
+
+
 
     </LinearLayout>
 

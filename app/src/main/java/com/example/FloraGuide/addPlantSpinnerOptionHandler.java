@@ -21,18 +21,18 @@ public class addPlantSpinnerOptionHandler {
     public void handleOption(String selectedOption) {
         switch (selectedOption) {
             case "Carrot":
-                itemList.add(new Item(R.drawable.carrot, "Carrot", "Description for Item 1"));
+                itemList.add(new Item(R.drawable.carrot, "Carrot", "Description for Carrot", "imageUrl"));
                 break;
             case "Tomato":
-                itemList.add(new Item(R.drawable.tomato, "Tomato", "Description for Item 2"));
+                itemList.add(new Item(R.drawable.tomato, "Tomato", "Description for Tomato", "imageUrl"));
                 break;
             case "Green Chilli":
-                itemList.add(new Item(R.drawable.greenchilli, "Green Chilli", "Description for Item 3"));
+                itemList.add(new Item(R.drawable.greenchilli, "Green Chilli", "Description for Green Chilli", "imageUrl"));
                 break;
             default:
                 // Handle unknown option or add appropriate behavior
                 break;
         }
-
     }
+
 }
