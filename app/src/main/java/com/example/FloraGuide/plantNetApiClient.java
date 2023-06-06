@@ -7,7 +7,8 @@ import java.io.File;
 import java.io.IOException;
 
 public class plantNetApiClient {
-    private static final String PLANTNET_API_URL = "https://my-api.plantnet.org/v2/identify/all";
+    private static final String PLANTNET_API_URL = "https://my-api.plantnet.org/v2/identify/all?include-related-images=true&no-reject=false&lang=en&api-key=2b10h18ZYwkg73elz60n2U7d";
+    private static final String API_KEY = "2b10h18ZYwkg73elz60n2U7d"; // Replace with your actual API key
 
     public interface PlantIdentificationListener {
         void onPlantIdentificationSuccess(PlantIdentificationResult result);
@@ -28,6 +29,7 @@ public class plantNetApiClient {
         // Build the API request
         Request request = new Request.Builder()
                 .url(PLANTNET_API_URL)
+                .addHeader("API-Key", API_KEY) // Add the API key to the request header
                 .post(requestBody)
                 .build();
 

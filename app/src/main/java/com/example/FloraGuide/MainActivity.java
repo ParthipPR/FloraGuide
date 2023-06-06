@@ -1,5 +1,6 @@
 package com.example.FloraGuide;
 
+
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -18,6 +19,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.view.Gravity;
@@ -60,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
     TextView add_plantText, remove_plantText;
     List<Item> itemList = new ArrayList<>();
     RelativeLayout layout;
+    Handler handler = new Handler();
+
     //To check whether the sub fab is visible or not
     boolean isAllFabVisible;
 
@@ -76,6 +80,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Check and request camera permission
+        if (!checkCameraPermission()) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+        }
+
+        // Check and request read storage permission
+        if (!checkReadStoragePermission()) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.MANAGE_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE_PERMISSION);
+        }
         //Adding custom toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -212,9 +226,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean checkReadStoragePermission() {
-        int readStoragePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+        int readStoragePermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         if (readStoragePermission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.MANAGE_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE_PERMISSION);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE_PERMISSION);
             return false;
         }
         return true;
@@ -230,6 +244,8 @@ public class MainActivity extends AppCompatActivity {
                 // For example, you can show the camera intent here
             } else {
                 // Permission denied, handle accordingly (e.g., show a message or disable camera functionality)
+                Toast.makeText(MainActivity.this, "Camera permission denied " , Toast.LENGTH_SHORT).show();
+
             }
         } else if (requestCode == REQUEST_READ_STORAGE_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -237,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
                 // For example, you can show the gallery intent here
             } else {
                 // Permission denied, handle accordingly (e.g., show a message or disable gallery functionality)
+                Toast.makeText(MainActivity.this, "Gallery permission denied " , Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -313,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
                     // Save the image to a file or process it directly
                     // For simplicity, we assume the image is saved as "image.jpg"
                     String imageFilePath = saveImageToFile(imageBitmap);
+                    Toast.makeText(this, "Image saved", Toast.LENGTH_SHORT).show();
                     identifyPlant(imageFilePath);
                 }
             } else if (requestCode == REQUEST_IMAGE_GALLERY && data != null) {
@@ -325,6 +343,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
 
     private String saveImageToFile(Bitmap imageBitmap) {
         // Save the image bitmap to a file and return the file path
@@ -359,21 +378,33 @@ public class MainActivity extends AppCompatActivity {
         if (imageFilePath != null) {
             // Identify the plant using plantNetApiClient
             plantNetApiClient.identifyPlant(imageFilePath, new plantNetApiClient.PlantIdentificationListener() {
-                @Override
-                public void onPlantIdentificationSuccess(PlantIdentificationResult result) {
-                    // Process the identification result
-                    // You can access the plant information from the result object
-                    String scientificName = result.getScientificName();
-                    List<String> commonNames = result.getCommonNames();
-                    double confidence = result.getConfidence();
-                    String imageUrl = result.getImageUrl();
 
+                public void onPlantIdentificationSuccess(List<PlantNetResponse> responses) {
+                    // Check if the responses list is null
+                    if (responses != null && !responses.isEmpty()) {
+                        // Assuming you want to access the first response in the list
+                        PlantNetResponse firstResponse = responses.get(0);
+                        String scientificName = firstResponse.getScientificName();
+                        String commonName = firstResponse.getCommonName();
+                        String imageUrl = firstResponse.getImageUrl();
 
+                        // Show toast message on the main/UI thread
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "Plant identified: " + scientificName, Toast.LENGTH_SHORT).show();
+                            }
+                        });
 
+                        // Create a new Item based on the identified plant
+                        Item newItem = new Item(0, scientificName, commonName, imageUrl);
 
-                    // Download the image from the URL and display it
-                    downloadAndDisplayImage(imageUrl, scientificName, commonNames.get(0));
+                        // Add the new item to the list and update the adapter
+                        itemList.add(newItem);
+                        adapter.notifyDataSetChanged();
+                    }
                 }
+
 
                 private void downloadAndDisplayImage(String imageUrl, String scientificName, String commonName) {
                     OkHttpClient client = new OkHttpClient();
@@ -415,6 +446,7 @@ public class MainActivity extends AppCompatActivity {
                             } else {
                                 // Handle image download failure
                                 // You can display a placeholder image or show an error message
+                                Toast.makeText(MainActivity.this, "image download failure", Toast.LENGTH_SHORT).show();
                             }
                         }
                     });
@@ -422,9 +454,19 @@ public class MainActivity extends AppCompatActivity {
 
 
                 @Override
+                public void onPlantIdentificationSuccess(PlantIdentificationResult result) {
+
+                }
+
+                @Override
                 public void onPlantIdentificationFailure(String errorMessage) {
                     // Handle plant identification failure
-                    Toast.makeText(MainActivity.this, "Plant identification failed: " + errorMessage, Toast.LENGTH_SHORT).show();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Plant identification failed.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
             });
         }

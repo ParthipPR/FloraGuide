@@ -11,14 +11,13 @@ public class Item {
         this.title = title;
         this.description = description;
         this.imageUrl = imageUrl;
-
     }
 
-    public int getImageResId() {
+    public int getId() {
         return id;
     }
 
-    public void setImageResId(int imageResId) {
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -36,5 +35,13 @@ public class Item {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }
